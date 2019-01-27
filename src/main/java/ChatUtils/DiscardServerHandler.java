@@ -1,30 +1,20 @@
 package ChatUtils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.handler.codec.http.DefaultHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
-import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.rtsp.*;
-import io.netty.buffer.Unpooled;
-import io.netty.util.CharsetUtil;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.*;
-
-
 
 import java.util.Set;
 import org.apache.logging.log4j.LogManager;
@@ -48,74 +38,42 @@ public class DiscardServerHandler extends SimpleChannelInboundHandler<String> {
 
     WebSocketServerHandshaker handshaker;
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final ByteBuf CONTENT_BUFFER = Unpooled.unreleasableBuffer(Unpooled.directBuffer().writeBytes("Hello, World!".getBytes(CharsetUtil.UTF_8)));
-    private static final CharSequence TYPE_PLAIN = HttpHeaders.newEntity("text/plain; charset=UTF-8");
-    private static final CharSequence TYPE_JSON = HttpHeaders.newEntity("application/json; charset=UTF-8");
-    private static final CharSequence SERVER_NAME = HttpHeaders.newEntity("Netty");
-    private static final CharSequence CONTENT_TYPE_ENTITY = HttpHeaders.newEntity(HttpHeaders.Names.CONTENT_TYPE);
-    private static final CharSequence DATE_ENTITY = HttpHeaders.newEntity(HttpHeaders.Names.DATE);
-    private static final CharSequence CONTENT_LENGTH_ENTITY = HttpHeaders.newEntity(HttpHeaders.Names.CONTENT_LENGTH);
-    private static final CharSequence SERVER_ENTITY = HttpHeaders.newEntity(HttpHeaders.Names.SERVER);
-    private static final CharSequence contentLength = HttpHeaders.newEntity(String.valueOf(CONTENT_BUFFER.readableBytes()));
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws JsonProcessingException {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof TextWebSocketFrame) {
             System.out.println("normal request");
             System.out.println(((TextWebSocketFrame) msg).text());
             String header = ((TextWebSocketFrame) msg).text();
 
             //convert json mgessage into json object
-            JsonObject jsonObject = new JsonParser().parse(header).getAsJsonObject();
-
-            String command = jsonObject.get("command").getAsString();
-            //if first request then add channel to conversation
-            if (command.equalsIgnoreCase("getDetailConversations")) {
-                getDetailConversations(ctx, jsonObject);
-
-            } else if (command.equalsIgnoreCase("sendMessage")) {
-                //send messsage to involked clients
-                broadCast(ctx, jsonObject);
-                return;
-            }
+//            JsonObject jsonObject = new JsonParser().parse(header).getAsJsonObject();
+//
+//            String command = jsonObject.get("command").getAsString();
+//            //if first request then add channel to conversation
+//            if (command.equalsIgnoreCase("getDetailConversations")) {
+//                getDetailConversations(ctx, jsonObject);
+//
+//            } else if (command.equalsIgnoreCase("sendMessage")) {
+//                //send messsage to involked clients
+//                broadCast(ctx, jsonObject);
+//                return;
+//            }
         }
         DefaultHttpRequest httpRequest = null;
         if (msg instanceof DefaultHttpRequest) {
             System.out.println("handShake");
-            HttpRequest request = (HttpRequest) msg;
-            byte[] json = MAPPER.writeValueAsBytes(new Message("Hello, World!"));
-            writeResponse(ctx, request, CONTENT_BUFFER.duplicate(), TYPE_PLAIN, contentLength);
+            httpRequest = (DefaultHttpRequest) msg;
 
-//            httpRequest = (DefaultHttpRequest) msg;
-//
-//            // Handshake
-//            WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory("ws://127.0.0.1:8081/", null, false);
-//            final Channel channel = ctx.channel();
-//            final WebSocketServerHandshaker handshaker = wsFactory.newHandshaker(httpRequest);
-//
-//            if (handshaker == null) {
-//
-//            } else {
-//                ChannelFuture handshake = handshaker.handshake(channel, httpRequest);
-//            }
-        }
-    }
-    private void writeResponse(ChannelHandlerContext ctx, HttpRequest request, ByteBuf buf, CharSequence contentType, CharSequence contentLength) {
-        // Decide whether to close the connection or not.
-        boolean keepAlive = HttpHeaders.isKeepAlive(request);
-        // Build the response object.
-        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, buf, false);
-        HttpHeaders headers = response.headers();
-        headers.set(CONTENT_TYPE_ENTITY, contentType);
-        headers.set(SERVER_ENTITY, SERVER_NAME);
-        headers.set(CONTENT_LENGTH_ENTITY, contentLength);
+            // Handshake
+            WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory("ws://127.0.0.1:8081/", null, false);
+            final Channel channel = ctx.channel();
+            final WebSocketServerHandshaker handshaker = wsFactory.newHandshaker(httpRequest);
 
-        // Close the non-keep-alive connection after the write operation is
-        // done.
-        if (!keepAlive) {
-            ctx.write(response).addListener(ChannelFutureListener.CLOSE);
-        } else {
-            ctx.write(response, ctx.voidPromise());
+            if (handshaker == null) {
+
+            } else {
+                ChannelFuture handshake = handshaker.handshake(channel, httpRequest);
+            }
         }
     }
 
